@@ -9,7 +9,7 @@ Built for use with Claude Code. Registered via `claude mcp add` and consumed by 
 ## Architecture
 
 ```
-Query ("FDA 510k meeting notes")
+Query ("project kickoff meeting notes")
   |
   v
 [Embedder] Encode query -> 384-dim vector via bge-micro-v2 (ONNX)

@@ -7,7 +7,7 @@ Built on pre-computed [Smart Connections](https://smartconnections.app/) embeddi
 ## How It Works
 
 ```
-"FDA regulatory pathway for AI devices"
+"What did we discuss in out last brainstorming session?"
         |
         v
   [bge-micro-v2]  Encode query -> 384-dim vector (ONNX, local)
@@ -70,12 +70,12 @@ Once registered, three tools are available in Claude Code sessions:
 ### Example Usage (in Claude Code)
 
 ```
-> Search my vault for notes about regulatory risk assessment
+> Search my vault for notes about project planning
 
-Claude uses semantic_search("regulatory risk assessment") and returns:
-  01 PROJECTS/FDA/Risk_Assessment_Framework.md (score: 0.847)
-  02 REFERENCE/EU_MDR_Clinical_Evaluation.md   (score: 0.723)
-  00 INBOX/Meeting_Notes_Regulatory_Review.md  (score: 0.681)
+Claude uses semantic_search("project planning") and returns:
+  01 PROJECTS/App_Redesign/Planning_Notes.md  (score: 0.847)
+  02 REFERENCE/Agile_Sprint_Templates.md      (score: 0.723)
+  00 INBOX/Meeting_Notes_Q1_Kickoff.md        (score: 0.681)
 ```
 
 ### Score Interpretation
