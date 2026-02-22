@@ -1,0 +1,29 @@
+{
+  "name": "smart-search-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for semantic search over Obsidian vaults using Smart Connections embeddings",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "mcp",
+    "obsidian",
+    "semantic-search",
+    "embeddings"
+  ],
+  "author": "Anant Vemuri",
+  "license": "MIT",
+  "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.18",
+    "vitest": "^4.0.18"
+  }
+}
