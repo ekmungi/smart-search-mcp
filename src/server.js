@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { loadEmbeddings } from './ajson-parser.js';
 import { createEmbedder } from './embedder.js';
 import { semanticSearch, findRelated, getStats } from './search.js';
+import { readNote } from './reader.js';
 
 // ---------------------------------------------------------------------------
 // Result formatting helpers
@@ -53,12 +54,13 @@ function textContent(text) {
  *
  * @param {Map<string, {vec: number[], type: string}>} embeddings - Preloaded vault embeddings.
  * @param {{ encode: (text: string) => Promise<Float32Array> }} embedder - Text encoder instance.
- * @returns {McpServer} Configured server with semantic_search, find_related, vault_stats tools.
+ * @param {string|null} [vaultPath] - Absolute path to the vault root (required for read_note).
+ * @returns {McpServer} Configured server with semantic_search, find_related, vault_stats, read_note tools.
  */
-export function createServer(embeddings, embedder) {
+export function createServer(embeddings, embedder, vaultPath = null) {
   const server = new McpServer({
     name: 'smart-search',
-    version: '1.0.0',
+    version: '1.1.0',
   });
 
   // Tool: semantic_search
@@ -70,12 +72,16 @@ export function createServer(embeddings, embedder) {
       query: z.string().min(1).max(2000),
       limit: z.number().optional(),
       threshold: z.number().optional(),
+      type: z.enum(['source', 'block']).optional(),
+      folder: z.string().optional(),
     },
-    async ({ query, limit, threshold }) => {
+    async ({ query, limit, threshold, type, folder }) => {
       try {
         const results = await semanticSearch(query, embeddings, embedder, {
           limit,
           threshold,
+          type,
+          folder,
         });
         return textContent(formatResults(results));
       } catch (err) {
@@ -94,10 +100,11 @@ export function createServer(embeddings, embedder) {
     {
       note_path: z.string().min(1).max(500),
       limit: z.number().optional(),
+      type: z.enum(['source', 'block']).optional(),
     },
-    async ({ note_path, limit }) => {
+    async ({ note_path, limit, type }) => {
       try {
-        const results = findRelated(note_path, embeddings, { limit });
+        const results = findRelated(note_path, embeddings, { limit, type });
         return textContent(formatResults(results));
       } catch (err) {
         return textContent(`Error running find_related: ${err.message}`);
@@ -123,6 +130,30 @@ export function createServer(embeddings, embedder) {
         return textContent(lines.join('\n'));
       } catch (err) {
         return textContent(`Error running vault_stats: ${err.message}`);
+      }
+    }
+  );
+
+  // Tool: read_note
+  // Reads the raw Markdown content of a vault note by its path.
+  server.tool(
+    'read_note',
+    'Read the content of a vault note by path. Accepts block paths (with # fragment).',
+    {
+      note_path: z.string().min(1).max(500),
+    },
+    async ({ note_path }) => {
+      try {
+        if (!vaultPath) {
+          return textContent('Error: read_note is unavailable (vault path not configured).');
+        }
+        const result = await readNote(note_path, vaultPath);
+        const notice = result.truncated
+          ? '\n\n[Truncated: content exceeds 10,000 characters]'
+          : '';
+        return textContent(result.content + notice);
+      } catch (err) {
+        return textContent(`Error reading note: ${err.message}`);
       }
     }
   );
@@ -162,7 +193,7 @@ export async function main() {
   }
 
   const embedder = createEmbedder();
-  const server = createServer(embeddings, embedder);
+  const server = createServer(embeddings, embedder, vaultPath);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

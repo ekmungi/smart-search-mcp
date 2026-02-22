@@ -47,9 +47,10 @@ MCP Response (tool result with ranked note paths + scores)
 
 | Tool | Purpose | Parameters |
 |------|---------|------------|
-| `semantic_search` | Find notes by meaning | `query` (string), `limit` (number, default 10), `threshold` (number, default 0.3) |
-| `find_related` | Find notes similar to a given note | `note_path` (string), `limit` (number, default 10) |
+| `semantic_search` | Find notes by meaning | `query` (string), `limit` (number, default 10), `threshold` (number, default 0.3), `type` ("source" or "block", optional), `folder` (string, optional) |
+| `find_related` | Find notes similar to a given note | `note_path` (string), `limit` (number, default 10), `type` ("source" or "block", optional) |
 | `vault_stats` | Embedding health check | none |
+| `read_note` | Read note content by path | `note_path` (string, max 500 chars) |
 
 ## File Structure
 
@@ -59,14 +60,16 @@ smart-search-mcp/
   PLAN.md                # Implementation plan (phases, tasks)
   package.json           # Dependencies and scripts
   src/
-    server.js            # MCP server entry point (~180 lines)
-    search.js            # Search orchestrator: semantic search, find related, stats (~115 lines)
+    server.js            # MCP server entry point (~200 lines)
+    search.js            # Search orchestrator: semantic search, find related, stats (~130 lines)
+    reader.js            # Note reader: path extraction, safety validation, file reading (~75 lines)
     ajson-parser.js      # Parse .smart-env/multi/*.ajson files (~170 lines)
     embedder.js          # Query encoding via @huggingface/transformers (~95 lines)
     similarity.js        # Cosine similarity computation (~45 lines)
   tests/
     server.test.js
     search.test.js
+    reader.test.js
     ajson-parser.test.js
     embedder.test.js
     similarity.test.js

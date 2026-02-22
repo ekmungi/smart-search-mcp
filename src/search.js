@@ -24,7 +24,7 @@ const MODEL_ID = 'TaylorAI/bge-micro-v2';
  * @param {string} query - The natural-language search query.
  * @param {Map<string, {vec: number[], type: string}>} embeddings - Preloaded vault embeddings.
  * @param {{ encode: (text: string) => Promise<Float32Array> }} embedder - Text encoder instance.
- * @param {{ limit?: number, threshold?: number }} [options] - Optional search configuration.
+ * @param {{ limit?: number, threshold?: number, type?: string, folder?: string }} [options] - Optional search configuration.
  * @returns {Promise<Array<{path: string, score: number}>>} Sorted results, best match first.
  */
 export async function semanticSearch(query, embeddings, embedder, options = {}) {
@@ -35,9 +35,19 @@ export async function semanticSearch(query, embeddings, embedder, options = {}) 
   // Convert Float32Array to a plain array for cosineSimilarity compatibility.
   const queryArr = Array.from(queryVec);
 
+  // Pre-compute lowercase folder prefix for case-insensitive folder filtering.
+  const folderLower = options.folder ? options.folder.toLowerCase() : null;
+
   // Build results array using functional reduce to avoid mutation of the outer array.
-  const results = Array.from(embeddings.entries()).reduce((acc, [path, { vec }]) => {
-    const score = cosineSimilarity(queryArr, vec);
+  // Pre-filter by type and folder before computing cosine similarity (avoids wasted dot products).
+  const results = Array.from(embeddings.entries()).reduce((acc, [path, entry]) => {
+    if (options.type && entry.type !== options.type) {
+      return acc;
+    }
+    if (folderLower && !path.toLowerCase().startsWith(folderLower)) {
+      return acc;
+    }
+    const score = cosineSimilarity(queryArr, entry.vec);
     if (score >= threshold) {
       return [...acc, { path, score }];
     }
@@ -58,7 +68,7 @@ export async function semanticSearch(query, embeddings, embedder, options = {}) 
  *
  * @param {string} notePath - Vault-relative path of the source note (e.g. "notes/foo.md").
  * @param {Map<string, {vec: number[], type: string}>} embeddings - Preloaded vault embeddings.
- * @param {{ limit?: number, threshold?: number }} [options] - Optional search configuration.
+ * @param {{ limit?: number, threshold?: number, type?: string }} [options] - Optional search configuration.
  * @returns {Array<{path: string, score: number}>} Sorted related notes, best match first.
  * @throws {Error} If notePath is not present in the embeddings Map.
  */
@@ -74,11 +84,15 @@ export function findRelated(notePath, embeddings, options = {}) {
   }
 
   // Build results, skipping the source note itself to avoid self-similarity.
-  const results = Array.from(embeddings.entries()).reduce((acc, [path, { vec }]) => {
+  // Pre-filter by type before computing cosine similarity.
+  const results = Array.from(embeddings.entries()).reduce((acc, [path, entry]) => {
     if (path === notePath) {
       return acc;
     }
-    const score = cosineSimilarity(source.vec, vec);
+    if (options.type && entry.type !== options.type) {
+      return acc;
+    }
+    const score = cosineSimilarity(source.vec, entry.vec);
     if (score >= threshold) {
       return [...acc, { path, score }];
     }

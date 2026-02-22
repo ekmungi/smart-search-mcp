@@ -59,13 +59,18 @@ claude mcp list
 
 ## MCP Tools
 
-Once registered, three tools are available in Claude Code sessions:
+Once registered, four tools are available in Claude Code sessions:
 
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
-| `semantic_search` | Find notes by meaning | `query` (string), `limit` (default 10), `threshold` (default 0.3) |
-| `find_related` | Find notes similar to a given note | `note_path` (string), `limit` (default 10) |
+| `semantic_search` | Find notes by meaning | `query` (string), `limit` (default 10), `threshold` (default 0.3), `type` ("source" or "block"), `folder` (string) |
+| `find_related` | Find notes similar to a given note | `note_path` (string), `limit` (default 10), `type` ("source" or "block") |
 | `vault_stats` | Check embedding health | none |
+| `read_note` | Read note content by path | `note_path` (string) |
+
+**Filtering parameters:**
+- `type`: Filter results to note-level entries (`"source"`) or heading-level blocks (`"block"`). Omit to return both.
+- `folder`: Restrict `semantic_search` to a vault subfolder (e.g. `"Projects/"`). Case-insensitive prefix match.
 
 ### Example Usage (in Claude Code)
 
@@ -76,6 +81,11 @@ Claude uses semantic_search("project planning") and returns:
   01 PROJECTS/App_Redesign/Planning_Notes.md  (score: 0.847)
   02 REFERENCE/Agile_Sprint_Templates.md      (score: 0.723)
   00 INBOX/Meeting_Notes_Q1_Kickoff.md        (score: 0.681)
+
+> Read that first note
+
+Claude uses read_note("PROJECTS/App_Redesign/Planning_Notes.md") and returns
+the full Markdown content of the note (truncated at 10,000 chars if needed).
 ```
 
 ### Score Interpretation
@@ -93,18 +103,20 @@ Claude uses semantic_search("project planning") and returns:
 src/
   server.js          MCP server entry point, tool registration
   search.js          Orchestrator: semantic search, find related, stats
+  reader.js          Note reader: path extraction, safety validation, file reading
   ajson-parser.js    Parse Smart Connections .ajson embedding files
   embedder.js        Query encoding via @huggingface/transformers (ONNX)
   similarity.js      Cosine similarity computation
 tests/
-  server.test.js     13 tests
-  search.test.js     24 tests
+  server.test.js     18 tests
+  search.test.js     35 tests
+  reader.test.js     17 tests
   ajson-parser.test.js  18 tests
   embedder.test.js   13 tests
   similarity.test.js 15 tests
 ```
 
-83 tests total, 89% code coverage.
+116 tests total, 91% code coverage.
 
 ## Development
 

@@ -31,6 +31,19 @@ function buildTestEmbeddings() {
   return new Map(entries);
 }
 
+// Embeddings spread across multiple folders for folder-filter tests.
+// All vectors are [1,0,0] so every entry matches the mock query equally (score 1.0).
+function buildFolderTestEmbeddings() {
+  const entries = [
+    ['Projects/alpha.md',            { vec: [1, 0, 0], type: 'source' }],
+    ['Projects/alpha.md#Heading',    { vec: [1, 0, 0], type: 'block'  }],
+    ['Projects/beta.md',             { vec: [1, 0, 0], type: 'source' }],
+    ['Reference/gamma.md',           { vec: [1, 0, 0], type: 'source' }],
+    ['Reference/gamma.md#Section',   { vec: [1, 0, 0], type: 'block'  }],
+  ];
+  return new Map(entries);
+}
+
 // ---------------------------------------------------------------------------
 // semanticSearch
 // ---------------------------------------------------------------------------
@@ -120,6 +133,116 @@ describe('semanticSearch', () => {
     // alpha.md and alpha.md#Section both have score 1.0 -- top result is one of them
     expect(results[0].score).toBe(1.0);
   });
+
+  // -- type filter ----------------------------------------------------------
+
+  it('returns only source entries when type is "source"', async () => {
+    const embeddings = buildTestEmbeddings();
+    const results = await semanticSearch('test query', embeddings, mockEmbedder, {
+      type: 'source',
+      threshold: 0,
+    });
+
+    // No block entries should appear in results.
+    const paths = results.map((r) => r.path);
+    expect(paths).not.toContain('notes/alpha.md#Section');
+    // At least one source must be present.
+    expect(results.length).toBeGreaterThan(0);
+  });
+
+  it('returns only block entries when type is "block"', async () => {
+    const embeddings = buildTestEmbeddings();
+    const results = await semanticSearch('test query', embeddings, mockEmbedder, {
+      type: 'block',
+      threshold: 0,
+    });
+
+    // Every result must be a block (path contains '#').
+    for (const r of results) {
+      expect(r.path).toContain('#');
+    }
+    expect(results.length).toBeGreaterThan(0);
+  });
+
+  it('returns all entry types when type is omitted (backward compat)', async () => {
+    const embeddings = buildTestEmbeddings();
+    const results = await semanticSearch('test query', embeddings, mockEmbedder, {
+      threshold: 0,
+    });
+
+    const types = results.map((r) => {
+      const entry = embeddings.get(r.path);
+      return entry.type;
+    });
+    // Must include at least one source and one block.
+    expect(types).toContain('source');
+    expect(types).toContain('block');
+  });
+
+  // -- folder filter --------------------------------------------------------
+
+  it('returns only entries within the specified folder', async () => {
+    const embeddings = buildFolderTestEmbeddings();
+    const results = await semanticSearch('test query', embeddings, mockEmbedder, {
+      folder: 'Projects/',
+      threshold: 0,
+    });
+
+    for (const r of results) {
+      expect(r.path.toLowerCase().startsWith('projects/')).toBe(true);
+    }
+    expect(results.length).toBeGreaterThan(0);
+  });
+
+  it('folder matching is case-insensitive', async () => {
+    const embeddings = buildFolderTestEmbeddings();
+    const lower = await semanticSearch('test query', embeddings, mockEmbedder, {
+      folder: 'projects/',
+      threshold: 0,
+    });
+    const upper = await semanticSearch('test query', embeddings, mockEmbedder, {
+      folder: 'PROJECTS/',
+      threshold: 0,
+    });
+
+    expect(lower.length).toBe(upper.length);
+    expect(lower.length).toBeGreaterThan(0);
+  });
+
+  it('returns empty results for a nonexistent folder', async () => {
+    const embeddings = buildFolderTestEmbeddings();
+    const results = await semanticSearch('test query', embeddings, mockEmbedder, {
+      folder: 'NonexistentFolder/',
+      threshold: 0,
+    });
+
+    expect(results).toEqual([]);
+  });
+
+  it('combines folder and type filters correctly', async () => {
+    const embeddings = buildFolderTestEmbeddings();
+    const results = await semanticSearch('test query', embeddings, mockEmbedder, {
+      folder: 'Projects/',
+      type: 'source',
+      threshold: 0,
+    });
+
+    for (const r of results) {
+      expect(r.path.toLowerCase().startsWith('projects/')).toBe(true);
+      expect(r.path).not.toContain('#');
+    }
+    expect(results.length).toBeGreaterThan(0);
+  });
+
+  it('returns all entries when folder is omitted', async () => {
+    const embeddings = buildFolderTestEmbeddings();
+    const withoutFolder = await semanticSearch('test query', embeddings, mockEmbedder, {
+      threshold: 0,
+    });
+
+    // Should include entries from multiple folders.
+    expect(withoutFolder.length).toBe(embeddings.size);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -187,6 +310,46 @@ describe('findRelated', () => {
     ]);
     const results = findRelated('notes/only.md', embeddings);
     expect(results).toEqual([]);
+  });
+
+  // -- type filter ----------------------------------------------------------
+
+  it('returns only source entries when type is "source"', () => {
+    const embeddings = buildTestEmbeddings();
+    const results = findRelated('notes/alpha.md', embeddings, {
+      type: 'source',
+      threshold: 0,
+    });
+
+    const paths = results.map((r) => r.path);
+    // Block entry must be excluded.
+    expect(paths).not.toContain('notes/alpha.md#Section');
+    expect(results.length).toBeGreaterThan(0);
+  });
+
+  it('returns only block entries when type is "block"', () => {
+    const embeddings = buildTestEmbeddings();
+    const results = findRelated('notes/alpha.md', embeddings, {
+      type: 'block',
+      threshold: 0,
+    });
+
+    for (const r of results) {
+      expect(r.path).toContain('#');
+    }
+    expect(results.length).toBeGreaterThan(0);
+  });
+
+  it('returns all entry types when type is omitted (backward compat)', () => {
+    const embeddings = buildTestEmbeddings();
+    const results = findRelated('notes/alpha.md', embeddings, { threshold: 0 });
+
+    const types = results.map((r) => {
+      const entry = embeddings.get(r.path);
+      return entry.type;
+    });
+    expect(types).toContain('source');
+    expect(types).toContain('block');
   });
 });
 

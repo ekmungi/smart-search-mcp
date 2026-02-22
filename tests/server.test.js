@@ -2,8 +2,11 @@
 // Focuses on wiring: tool registration, env validation, and graceful error handling.
 // Uses mock embeddings and embedder -- no real vault or model loading.
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { createServer } from '../src/server.js';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -141,6 +144,70 @@ describe('vault_stats tool handler', () => {
     expect(textItem).toBeDefined();
     // Stats text must mention note count.
     expect(textItem.text).toMatch(/\d+/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// read_note tool handler
+// ---------------------------------------------------------------------------
+
+describe('read_note tool handler', () => {
+  let tmpVault;
+
+  beforeAll(() => {
+    tmpVault = fs.mkdtempSync(path.join(os.tmpdir(), 'smart-search-server-'));
+    fs.mkdirSync(path.join(tmpVault, 'notes'), { recursive: true });
+    fs.writeFileSync(path.join(tmpVault, 'notes', 'hello.md'), 'Hello from vault!');
+  });
+
+  afterAll(() => {
+    fs.rmSync(tmpVault, { recursive: true, force: true });
+  });
+
+  it('registers the read_note tool', () => {
+    const server = createServer(mockEmbeddings, mockEmbedder, tmpVault);
+
+    expect(server._registeredTools).toHaveProperty('read_note');
+  });
+
+  it('returns note content via the handler', async () => {
+    const server = createServer(mockEmbeddings, mockEmbedder, tmpVault);
+    const handler = server._registeredTools['read_note'].handler;
+
+    const result = await handler({ note_path: 'notes/hello.md' }, {});
+
+    const textItem = result.content.find((c) => c.type === 'text');
+    expect(textItem.text).toBe('Hello from vault!');
+  });
+
+  it('returns error text for path traversal attempts', async () => {
+    const server = createServer(mockEmbeddings, mockEmbedder, tmpVault);
+    const handler = server._registeredTools['read_note'].handler;
+
+    const result = await handler({ note_path: '../etc/passwd' }, {});
+
+    const textItem = result.content.find((c) => c.type === 'text');
+    expect(textItem.text).toMatch(/error/i);
+  });
+
+  it('returns error text for a missing file', async () => {
+    const server = createServer(mockEmbeddings, mockEmbedder, tmpVault);
+    const handler = server._registeredTools['read_note'].handler;
+
+    const result = await handler({ note_path: 'notes/nonexistent.md' }, {});
+
+    const textItem = result.content.find((c) => c.type === 'text');
+    expect(textItem.text).toMatch(/error/i);
+  });
+
+  it('works without vaultPath (backward compat) -- returns error message', async () => {
+    const server = createServer(mockEmbeddings, mockEmbedder);
+    const handler = server._registeredTools['read_note'].handler;
+
+    const result = await handler({ note_path: 'notes/hello.md' }, {});
+
+    const textItem = result.content.find((c) => c.type === 'text');
+    expect(textItem.text).toMatch(/unavailable/i);
   });
 });
 
