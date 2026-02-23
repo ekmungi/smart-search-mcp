@@ -32,6 +32,17 @@ The server reads `.smart-env/multi/*.ajson` files that Smart Connections generat
 
 ## Quick Start
 
+**Windows:**
+
+```cmd
+git clone https://github.com/ekmungi/smart-search-mcp.git
+cd smart-search-mcp
+setup.bat                              REM auto-detects vault path
+setup.bat C:\path\to\your\vault        REM or specify explicitly
+```
+
+**macOS / Linux:**
+
 ```bash
 git clone https://github.com/ekmungi/smart-search-mcp.git
 cd smart-search-mcp
@@ -39,7 +50,7 @@ cd smart-search-mcp
 ./setup.sh /path/to/your/vault    # or specify explicitly
 ```
 
-The setup script installs dependencies, locates your vault, and registers the MCP server with Claude Code.
+Both scripts install dependencies, locate your vault, and register the MCP server with Claude Code.
 
 **Manual setup** (if you prefer):
 
@@ -144,10 +155,6 @@ The [Smart Connections](https://smartconnections.app/) Obsidian plugin pre-compu
 - **Block entries** (`smart_blocks:`): One embedding per heading section
 
 This server reads those files directly, so Obsidian does not need to be running. However, if you add or edit notes, you need to open Obsidian once so Smart Connections can re-index.
-
-## Integration with Jeeves
-
-This server is the Tier 1 search backend for the [Jeeves](https://github.com/ekmungi/jeeves) Claude Code plugin's `obsidian-knowledge` skill. When the MCP server is unavailable, the skill falls back to Tier 2 (filesystem Grep/Glob keyword search).
 
 ## License
 

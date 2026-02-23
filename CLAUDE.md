@@ -4,7 +4,7 @@
 
 A lightweight MCP (Model Context Protocol) server that provides semantic search over Obsidian vaults using pre-computed Smart Connections embeddings. Reads the `.smart-env/` directory directly -- does not require Obsidian to be running.
 
-Built for use with Claude Code. Registered via `claude mcp add` and consumed by the Jeeves plugin's `obsidian-knowledge` skill as Tier 1 semantic search.
+Built for use with Claude Code. Registered via `claude mcp add` and consumed as a semantic search backend by any MCP-compatible client.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ MCP Response (tool result with ranked note paths + scores)
 - **Reads .smart-env directly**: No dependency on Obsidian running. Embeddings are pre-computed by the Smart Connections plugin.
 - **Same model (bge-micro-v2)**: Query encoding uses the identical model that produced the stored embeddings. Vector spaces must match.
 - **MCP over CLI**: Server stays warm, model loads once. CLI would cold-start (~1-2s) every invocation.
-- **Separate from Jeeves**: Jeeves is a Markdown-only Claude Code plugin. This is a Node.js application. Clean interface boundary at `claude mcp add` registration.
+- **Standalone server**: This is a Node.js application with a clean MCP interface boundary. Any MCP client can consume it.
 
 ## Environment
 
@@ -57,7 +57,6 @@ MCP Response (tool result with ranked note paths + scores)
 ```
 smart-search-mcp/
   CLAUDE.md              # This file (project instructions)
-  PLAN.md                # Implementation plan (phases, tasks)
   package.json           # Dependencies and scripts
   src/
     server.js            # MCP server entry point (~200 lines)
@@ -92,13 +91,16 @@ smart-search-mcp/
 One-click setup on any machine:
 
 ```bash
-git clone https://github.com/ekmungi/smart-search-mcp.git
-cd smart-search-mcp
+# macOS / Linux
 ./setup.sh                    # auto-detects vault path
 ./setup.sh /path/to/vault     # or specify explicitly
+
+# Windows
+setup.bat                              REM auto-detects vault path
+setup.bat C:\path\to\vault             REM or specify explicitly
 ```
 
-The setup script: installs deps, locates the Obsidian vault, and registers the MCP server with Claude Code at the user level.
+Both scripts: install deps, locate the Obsidian vault, and register the MCP server with Claude Code at the user level.
 
 **Manual registration** (if needed):
 
@@ -107,6 +109,3 @@ npm install
 claude mcp add -s user smart-search -e OBSIDIAN_VAULT_PATH="/path/to/vault" -- node /path/to/src/server.js
 ```
 
-## Relationship to Jeeves
-
-This server is consumed by the Jeeves plugin's `obsidian-knowledge` skill (Tier 1 semantic search). The skill references these tool names: `semantic_search`, `find_related`, `vault_stats`. If this server is unavailable, the skill falls through to Tier 2 (filesystem Grep/Glob).
