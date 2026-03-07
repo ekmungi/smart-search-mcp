@@ -1,5 +1,12 @@
 # Smart Search MCP Server
 
+## Plugin Priority
+
+| Layer | Skills |
+|-------|--------|
+| Primary | superpowers: TDD, systematic-debugging, writing-plans, verification |
+| Secondary | -- |
+
 ## Project Overview
 
 A lightweight MCP (Model Context Protocol) server that provides semantic search over Obsidian vaults using pre-computed Smart Connections embeddings. Reads the `.smart-env/` directory directly -- does not require Obsidian to be running.
